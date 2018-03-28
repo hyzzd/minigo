@@ -62,7 +62,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--sgf-folder', type=str,
-        help='Path to the SGF folder with the game replays.')
+        help='Path to the folder containing the SGF game replays. The folder '
+             'will be searched through recursively for SGF files.')
     parser.add_argument(
         '--load-file', type=str,
         help='Path to the trained model directory to use for analysis.')
