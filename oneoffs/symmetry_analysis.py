@@ -81,6 +81,7 @@ if __name__ == '__main__':
             data = json.load(json_file)
     else:
         data = {
+            'percentiles': [],
             'median': [],
             'percentile90': [],
             'worst': [],
@@ -96,6 +97,7 @@ if __name__ == '__main__':
                     try:
                         percentiles, worst, avg_stddev = analyze_symmetries(
                             sgf_file_path, flags.load_file)
+                        data['percentiles'].append(percentiles)
                         data['median'].append(percentiles[50])
                         data['percentile90'].append(percentiles[90])
                         data['worst'].append(worst)
