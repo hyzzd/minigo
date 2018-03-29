@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import json
 import os
 import sys; sys.path.insert(0, '.')
 
@@ -48,8 +49,7 @@ def analyze_symmetries(sgf_file, load_file):
         # value network over all eight symmetries; also get the standard
         # deviation of the eight values.
         differences.append(max(values) - min(values))
-        stddev = np.std(values)
-        stddevs.append(stddev)
+        stddevs.append(np.std(values))
 
     differences.sort()
     percentiles = [differences[i * len(differences) // 100] for i in range(100)]
@@ -67,30 +67,61 @@ if __name__ == '__main__':
     parser.add_argument(
         '--load-file', type=str,
         help='Path to the trained model directory to use for analysis.')
+    parser.add_argument(
+        '--json-file', type=str, default=None,
+        help='Optional path to the JSON file where data should be loaded '
+             'and/or saved.')
     flags = parser.parse_args()
 
-    medians = []
-    percentile90s = []
-    worsts = []
-    avg_stddevs = []
+    if flags.json_file and os.path.isfile(flags.json_file):
+        print('')
+        print('Loading data from', flags.json_file)
 
-    # Find all .sgf files within flags.sgf_folder.
-    for subdir, dirs, files in os.walk(flags.sgf_folder):
-        for file in files:
-            if file.endswith('.sgf'):
-                sgf_file_path = os.path.join(subdir, file)
-                percentiles, worst, avg_stddev = analyze_symmetries(
-                    sgf_file_path, flags.load_file)
-                medians.append(percentiles[50])
-                percentile90s.append(percentiles[90])
-                worsts.append(worst)
-                avg_stddevs.append(avg_stddev)
+        with open(flags.json_file, 'r') as json_file:
+            data = json.load(json_file)
+    else:
+        data = {
+            'median': [],
+            'percentile90': [],
+            'worst': [],
+            'avg_stddev': []
+        }
+
+        # Find all .sgf files within flags.sgf_folder.
+        for subdir, dirs, files in os.walk(flags.sgf_folder):
+            for file in files:
+                if file.endswith('.sgf'):
+                    sgf_file_path = os.path.join(subdir, file)
+
+                    try:
+                        percentiles, worst, avg_stddev = analyze_symmetries(
+                            sgf_file_path, flags.load_file)
+                        data['median'].append(percentiles[50])
+                        data['percentile90'].append(percentiles[90])
+                        data['worst'].append(worst)
+                        data['avg_stddev'].append(avg_stddev)
+                    except Exception as e:
+                        print('')
+                        print('Error parsing %s: %s' % (sgf_file_path, e))
+                        print('')
+
+        if flags.json_file:
+            print('')
+            print('Saving data to', flags.json_file)
+
+            with open(flags.json_file, 'w') as json_file:
+                # We use a default conversion to float in order to convert numpy
+                # floats into Python floats, which JSON can actually serialize.
+                json.dump(data, json_file, default=float)
+
+    print('')
+    print('%d SGF files parsed. Summary:' % len(data['median']))
 
     print('Typical symmetry value difference (scale of 0-2):  %.3f' %
-          np.mean(medians))
+          np.mean(data['median']))
     print('Typical 90th percentile symmetry value difference: %.3f' %
-          np.mean(percentile90s))
+          np.mean(data['percentile90']))
     print('Typical worst symmetry value difference:           %.3f' %
-          np.mean(worsts))
+          np.mean(data['worst']))
     print('Typical standard deviation over all eight values:  %.3f' %
-          np.mean(avg_stddevs))
+          np.mean(data['avg_stddev']))
