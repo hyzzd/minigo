@@ -108,6 +108,7 @@ if __name__ == '__main__':
         if flags.json_file:
             print('')
             print('Saving data to', flags.json_file)
+            os.makedirs(os.path.dirname(flags.json_file))
 
             with open(flags.json_file, 'w') as json_file:
                 # We use a default conversion to float in order to convert numpy
