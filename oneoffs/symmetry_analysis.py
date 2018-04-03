@@ -26,12 +26,11 @@ import sgf_wrapper
 import symmetries
 
 
-def analyze_symmetries(sgf_file, load_file):
+def analyze_symmetries(sgf_file, dual_network):
     with open(sgf_file) as f:
         sgf_contents = f.read()
 
     iterator = sgf_wrapper.replay_sgf(sgf_contents)
-    net = dual_net.DualNetwork(load_file)
     differences = []
     stddevs = []
 
@@ -41,9 +40,9 @@ def analyze_symmetries(sgf_file, load_file):
         feats = features.extract_features(pwc.position)
         variants = [symmetries.apply_symmetry_feat(s, feats)
                     for s in symmetries.SYMMETRIES]
-        values = net.sess.run(
-            net.inference_output['value_output'],
-            feed_dict={net.inference_input: variants})
+        values = dual_network.sess.run(
+            dual_network.inference_output['value_output'],
+            feed_dict={dual_network.inference_input: variants})
 
         # Get the difference between the maximum and minimum outputs of the
         # value network over all eight symmetries; also get the standard
@@ -88,6 +87,8 @@ if __name__ == '__main__':
             'avg_stddev': []
         }
 
+        dual_network = dual_net.DualNetwork(flags.load_file)
+
         # Find all .sgf files within flags.sgf_folder.
         for subdir, dirs, files in os.walk(flags.sgf_folder):
             for file in files:
@@ -96,7 +97,7 @@ if __name__ == '__main__':
 
                     try:
                         percentiles, worst, avg_stddev = analyze_symmetries(
-                            sgf_file_path, flags.load_file)
+                            sgf_file_path, dual_network)
                         data['percentiles'].append(percentiles)
                         data['median'].append(percentiles[50])
                         data['percentile90'].append(percentiles[90])
